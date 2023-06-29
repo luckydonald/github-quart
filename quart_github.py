@@ -9,7 +9,7 @@
 import asyncio
 from weakref import finalize as Finalizer
 import logging
-from typing import Callable, Any, Dict, Coroutine
+from typing import Callable, Any, Dict, Awaitable
 from werkzeug.wrappers import Response as WerkzeugResponse
 
 from urllib.parse import urlencode, parse_qs
@@ -19,12 +19,16 @@ from httpx import AsyncClient, Response
 from quart import redirect, request, json, Quart, current_app
 from quart.utils import is_coroutine_function
 
+
 __version__ = '3.2.0'
 
 _logger = logging.getLogger(__name__)
 # Add NullHandler to prevent logging warnings on startup
 null_handler = logging.NullHandler()
 _logger.addHandler(null_handler)
+
+
+ASYNC_CALLABLE = Callable[[], Awaitable[None]]
 
 
 def is_valid_response(response: Response) -> bool:
@@ -84,7 +88,7 @@ class GitHub(object):
     session: AsyncClient
     _session: AsyncClient | None
     _finalizer: Finalizer | None
-    get_access_token: Callable[[], Coroutine[None]]
+    get_access_token: ASYNC_CALLABLE
 
     def __init__(self, app=None):
         self._session = None
@@ -123,7 +127,7 @@ class GitHub(object):
             return
         loop.call_soon(session.aclose)
 
-    def access_token_getter(self, f: Callable[[], Any] | Callable[[], Coroutine[None]]):
+    def access_token_getter(self, f: Callable[[], Any] | ASYNC_CALLABLE):
         """
         Registers a function as the access_token getter. Must return the
         access_token used to make requests to GitHub on the user's behalf.
