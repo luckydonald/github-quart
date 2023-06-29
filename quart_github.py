@@ -6,16 +6,17 @@
     Authenticate users in your Flask app with GitHub.
 
 """
+import asyncio
+from weakref import finalize as Finalizer
 import logging
-try:
-    from urllib.parse import urlencode, parse_qs
-except ImportError:
-    from urllib import urlencode
-    from urlparse import parse_qs
+from typing import Callable, Any, Dict
+from werkzeug.wrappers import Response as WerkzeugResponse
+
+from urllib.parse import urlencode, parse_qs
 from functools import wraps
 
-import requests
-from flask import redirect, request, json
+from httpx import AsyncClient, Response
+from quart import redirect, request, json, Quart, current_app
 
 __version__ = '3.2.0'
 
@@ -25,7 +26,7 @@ null_handler = logging.NullHandler()
 _logger.addHandler(null_handler)
 
 
-def is_valid_response(response):
+def is_valid_response(response: Response) -> bool:
     """Returns ``True`` if response ``status_code`` is not an error type,
     returns ``False`` otherwise.
 
@@ -38,7 +39,7 @@ def is_valid_response(response):
     return 200 <= response.status_code <= 299
 
 
-def is_json_response(response):
+def is_json_response(response: Response) -> bool:
     """Returns ``True`` if response ``Content-Type`` is JSON.
 
     :param response: :class:~`requests.Response` object to check
@@ -70,10 +71,19 @@ class GitHub(object):
     """
     Provides decorators for authenticating users with GitHub within a Flask
     application. Helper methods are also provided interacting with GitHub API.
-
     """
     BASE_URL = 'https://api.github.com/'
     BASE_AUTH_URL = 'https://github.com/login/oauth/'
+
+    app: Quart | None
+    client_id: str
+    client_secret: str
+    base_url: str
+    auth_url: str
+    session: AsyncClient
+    _session: AsyncClient
+    _finalizer: Finalizer
+    get_access_token: Callable[[], None]
 
     def __init__(self, app=None):
         if app is not None:
@@ -87,7 +97,25 @@ class GitHub(object):
         self.client_secret = app.config['GITHUB_CLIENT_SECRET']
         self.base_url = app.config.get('GITHUB_BASE_URL', self.BASE_URL)
         self.auth_url = app.config.get('GITHUB_AUTH_URL', self.BASE_AUTH_URL)
-        self.session = requests.session()
+        self.session = AsyncClient()
+
+    @property
+    def session(self):
+        return self._session
+
+    @session.setter
+    def session(self, value: AsyncClient):
+        self._close_session(self._session)
+        # end if
+        self._session = value
+        self._finalizer = Finalizer(value, self._close_session, value)
+
+    @staticmethod
+    def _close_session(session: AsyncClient):
+        if not session:
+            return
+        loop = asyncio.get_event_loop()
+        loop.call_soon(session.aclose)
 
     def access_token_getter(self, f):
         """
@@ -101,7 +129,7 @@ class GitHub(object):
     def get_access_token(self):
         raise NotImplementedError
 
-    def authorize(self, scope=None, redirect_uri=None, state=None):
+    def authorize(self, scope: list[str] = None, redirect_uri: str | None = None, state: str | None = None) -> WerkzeugResponse:
         """
         Redirect to GitHub and request access to a user's data.
 
@@ -154,7 +182,7 @@ class GitHub(object):
         .. _Redirect URL: https://developer.github.com/v3/oauth/#redirect-urls
 
         """
-        _logger.debug("Called authorize()")
+        _logger.debug("Called authorize(), creating redirect.")
         params = {'client_id': self.client_id}
         if scope:
             params['scope'] = scope
@@ -172,18 +200,18 @@ class GitHub(object):
         Decorator for the route that is used as the callback for authorizing
         with GitHub. This callback URL can be set in the settings for the app
         or passed in during authorization.
-
         """
         @wraps(f)
-        def decorated(*args, **kwargs):
+        async def decorated(*args, **kwargs):
             if 'code' in request.args:
-                data = self._handle_response()
+                data = await self._handle_response()
             else:
-                data = self._handle_invalid_response()
-            return f(*((data,) + args), **kwargs)
+                data = await self._handle_invalid_response()
+            async_f = current_app.ensure_async(f)
+            return await async_f(*((data,) + args), **kwargs)
         return decorated
 
-    def _handle_response(self):
+    async def _handle_response(self):
         """
         Handles response after the redirect to GitHub. This response
         determines if the user has allowed the this application access. If we
@@ -200,21 +228,19 @@ class GitHub(object):
         url = self.auth_url + 'access_token'
         _logger.debug("POSTing to %s", url)
         _logger.debug(params)
-        response = self.session.post(url, data=params)
-        data = parse_qs(response.content)
+        response = await self.session.post(url, data=params)
+        data: dict[bytes, list[bytes]] = parse_qs(response.content)
         _logger.debug("response.content = %s", data)
-        for k, v in data.items():
-            if len(v) == 1:
-                data[k] = v[0]
-        token = data.get(b'access_token', None)
-        if token is not None:
-            token = token.decode('ascii')
-        return token
+        token = data.get(b'access_token', [None])[0]
+        if token is None:
+            return None
+        # end if
+        return token.decode('ascii')
 
-    def _handle_invalid_response(self):
+    async def _handle_invalid_response(self):
         pass
 
-    def raw_request(self, method, resource, access_token=None, **kwargs):
+    async def raw_request(self, method: str, resource: str, access_token=None, **kwargs) -> Response:
         """
         Makes a HTTP request and returns the raw
         :class:`~requests.Response` object.
@@ -223,9 +249,9 @@ class GitHub(object):
         headers = self._pop_headers(kwargs)
         headers['Authorization'] = self._get_authorization_header(access_token)
         url = self._get_resource_url(resource)
-        return self.session.request(method, url, allow_redirects=True, headers=headers, **kwargs)
+        return await self.session.request(method, url, follow_redirects=True, headers=headers, **kwargs)
 
-    def _pop_headers(self, kwargs):
+    def _pop_headers(self, kwargs: dict) -> dict:
         try:
             headers = kwargs.pop('headers')
         except KeyError:
@@ -234,12 +260,12 @@ class GitHub(object):
             return {}
         return headers.copy()
 
-    def _get_authorization_header(self, access_token):
+    def _get_authorization_header(self, access_token: str | None) -> str:
         if access_token is None:
             access_token = self.get_access_token()
         return 'token %s' % access_token
 
-    def _get_resource_url(self, resource):
+    def _get_resource_url(self, resource: str) -> str:
         if resource.startswith(("http://", "https://")):
             return resource
         elif resource.startswith("/"):
@@ -247,16 +273,19 @@ class GitHub(object):
         else:
             return self.base_url + resource
 
-    def request(self, method, resource, all_pages=False, **kwargs):
+    async def request(self, method, resource, all_pages=False, **kwargs) -> Dict[str, Any] | Response:
         """
         Makes a request to the given endpoint.
         Keyword arguments are passed to the :meth:`~requests.request` method.
+
         If the content type of the response is JSON, it will be decoded
         automatically and a dictionary will be returned.
-        Otherwise the :class:`~requests.Response` object is returned.
+        For that it will follow any pagination of the GitHub api.
+
+        Otherwise, the :class:`~requests.Response` object is returned.
 
         """
-        response = self.raw_request(method, resource, **kwargs)
+        response = await self.raw_request(method, resource, **kwargs)
 
         if not is_valid_response(response):
             raise GitHubError(response)
@@ -265,7 +294,7 @@ class GitHub(object):
             result = response.json()
             while all_pages and response.links.get('next'):
                 url = response.links['next']['url']
-                response = self.raw_request(method, url, **kwargs)
+                response = await self.raw_request(method, url, **kwargs)
                 if not is_valid_response(response) or \
                         not is_json_response(response):
                     raise GitHubError(response)
@@ -280,36 +309,53 @@ class GitHub(object):
         else:
             return response
 
-    def get(self, resource, params=None, **kwargs):
+    async def get(self, resource: str, params=None, **kwargs) -> Dict[str, Any] | Response:
         """Shortcut for ``request('GET', resource)``."""
-        return self.request('GET', resource, params=params, **kwargs)
+        return await self.request('GET', resource, params=params, **kwargs)
 
-    def post(self, resource, data=None, **kwargs):
-        """Shortcut for ``request('POST', resource)``.
-        Use this to make POST request since it will also encode ``data`` to
-        'application/json' format."""
+    async def post(self, resource: str, data=None, **kwargs) -> Dict[str, Any] | Response:
+        """
+        Shortcut for ``request('POST', resource)``.
+
+        Use this to make POST requests, since it will also encode ``data`` to
+        'application/json' format.
+        """
         headers = dict(kwargs.pop('headers', {}))
         headers.setdefault('Content-Type', 'application/json')
         data = json.dumps(data)
-        return self.request('POST', resource, headers=headers,
+        return await self.request('POST', resource, headers=headers,
                             data=data, **kwargs)
 
-    def head(self, resource, **kwargs):
-        return self.request('HEAD', resource, **kwargs)
+    async def head(self, resource: str, **kwargs) -> Dict[str, Any] | Response:
+        """Shortcut for ``request('HEAD', resource)``."""
+        return await self.request('HEAD', resource, **kwargs)
 
-    def patch(self, resource, data=None, **kwargs):
+    async def patch(self, resource: str, data=None, **kwargs) -> Dict[str, Any] | Response:
+        """
+        Shortcut for ``request('PATCH', resource)``.
+
+        Use this to make POST requests, since it will also encode ``data`` to
+        'application/json' format.
+        """
         headers = dict(kwargs.pop('headers', {}))
         headers.setdefault('Content-Type', 'application/json')
         data = json.dumps(data)
-        return self.request('PATCH', resource, headers=headers,
+        return await self.request('PATCH', resource, headers=headers,
                             data=data, **kwargs)
 
-    def put(self, resource, data=None, **kwargs):
+    async def put(self, resource: str, data=None, **kwargs) -> Dict[str, Any] | Response:
+        """
+        Shortcut for ``request('PUT', resource)``.
+
+        Use this to make POST requests, since it will also encode ``data`` to
+        'application/json' format.
+        """
         headers = dict(kwargs.pop('headers', {}))
         headers.setdefault('Content-Type', 'application/json')
         data = json.dumps(data)
-        return self.request('PUT', resource, headers=headers,
+        return await self.request('PUT', resource, headers=headers,
                             data=data, **kwargs)
 
-    def delete(self, resource, **kwargs):
-        return self.request('DELETE', resource, **kwargs)
+    async def delete(self, resource: str, **kwargs) -> Dict[str, Any] | Response:
+        """Shortcut for ``request('HEAD', resource)``."""
+        return await self.request('DELETE', resource, **kwargs)
