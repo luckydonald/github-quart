@@ -1,1 +1,2 @@
 twine==4.0.2
+Quart-SQLAlchemy==2.0.0

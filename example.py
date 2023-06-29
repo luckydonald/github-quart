@@ -4,16 +4,18 @@
 
     Shows how to authorize users with Github.
 
+    pip install sqlalchemy
+
 """
-from flask import Flask, request, g, session, redirect, url_for
-from flask import render_template_string, jsonify
-from flask_github import GitHub
+from quart import Quart, request, g, session, redirect, url_for
+from quart import render_template_string, jsonify
+from quart_github import GitHub
 
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-DATABASE_URI = 'sqlite:////tmp/github-flask.db'
+DATABASE_URI = 'sqlite:////tmp/github-quart.db'
 SECRET_KEY = 'development key'
 DEBUG = True
 
@@ -21,11 +23,11 @@ DEBUG = True
 GITHUB_CLIENT_ID = 'XXX'
 GITHUB_CLIENT_SECRET = 'YYY'
 
-# setup flask
-app = Flask(__name__)
+# setup quart
+app = Quart(__name__)
 app.config.from_object(__name__)
 
-# setup github-flask
+# setup github-quart
 github = GitHub(app)
 
 # setup sqlalchemy
@@ -54,20 +56,20 @@ class User(Base):
 
 
 @app.before_request
-def before_request():
+async def before_request():
     g.user = None
     if 'user_id' in session:
         g.user = User.query.get(session['user_id'])
 
 
 @app.after_request
-def after_request(response):
+async def after_request(response):
     db_session.remove()
     return response
 
 
 @app.route('/')
-def index():
+async def index():
     if g.user:
         t = 'Hello! %s <a href="{{ url_for("user") }}">Get user</a> ' \
             '<a href="{{ url_for("repo") }}">Get repo</a> ' \
@@ -76,11 +78,11 @@ def index():
     else:
         t = 'Hello! <a href="{{ url_for("login") }}">Login</a>'
 
-    return render_template_string(t)
+    return await render_template_string(t)
 
 
 @github.access_token_getter
-def token_getter():
+async def token_getter():
     user = g.user
     if user is not None:
         return user.github_access_token
@@ -88,7 +90,7 @@ def token_getter():
 
 @app.route('/github-callback')
 @github.authorized_handler
-def authorized(access_token):
+async def authorized(access_token):
     next_url = request.args.get('next') or url_for('index')
     if access_token is None:
         return redirect(next_url)
@@ -100,10 +102,13 @@ def authorized(access_token):
 
     user.github_access_token = access_token
 
-    # Not necessary to get these details here
+    # Not necessary to get these details here,
     # but it helps humans to identify users easily.
     g.user = user
-    github_user = github.get('/user')
+    github_user = await github.get('/user')
+    if not isinstance(github_user, dict):
+        # must be a response with an error
+        return github_user.status_code, github_user.content
     user.github_id = github_user['id']
     user.github_login = github_user['login']
 
@@ -114,7 +119,7 @@ def authorized(access_token):
 
 
 @app.route('/login')
-def login():
+async def login():
     if session.get('user_id', None) is None:
         return github.authorize()
     else:
@@ -122,19 +127,19 @@ def login():
 
 
 @app.route('/logout')
-def logout():
+async def logout():
     session.pop('user_id', None)
     return redirect(url_for('index'))
 
 
 @app.route('/user')
-def user():
-    return jsonify(github.get('/user'))
+async def user():
+    return jsonify(await github.get('/user'))
 
 
 @app.route('/repo')
-def repo():
-    return jsonify(github.get('/repos/luckydonald/github-quart'))
+async def repo():
+    return jsonify(await github.get('/repos/luckydonald/github-quart'))
 
 
 if __name__ == '__main__':
