@@ -6,12 +6,15 @@ GitHub-Quart
 GitHub-Quart is an extension to `Quart`_ that allows you authenticate your
 users via GitHub using `OAuth`_ protocol and call `GitHub API`_ methods.
 
+This work is based on the excellent Flask extension `GitHub-Flask`_ and is essentially a port of that to Quart.
+
 GitHub-Quart depends on the `requests`_ library.
 
 .. _Quart: http://quart.pocoo.org/
 .. _OAuth: http://oauth.net/
 .. _GitHub API: http://developer.github.com/v3/
 .. _requests: http://python-requests.org/
+.. _GitHub-Flask: https://github.com/cenkalti/github-flask/
 
 
 Installation
@@ -72,9 +75,8 @@ To authenticate your users with GitHub simply call
 .. code-block:: python
 
     @app.route('/login')
-    def login():
+    async def login():
         return github.authorize()
-
 
 It will redirect the user to GitHub. If the user accepts the authorization
 request GitHub will redirect the user to your callback URL with the
@@ -87,19 +89,19 @@ If the authorization fails ``oauth_token`` parameter will be ``None``:
 
     @app.route('/github-callback')
     @github.authorized_handler
-    def authorized(oauth_token):
+    async def authorized(oauth_token):
         next_url = request.args.get('next') or url_for('index')
         if oauth_token is None:
             flash("Authorization failed.")
             return redirect(next_url)
 
-        user = User.query.filter_by(github_access_token=oauth_token).first()
+        user = await User.query.filter_by(github_access_token=oauth_token).first()
         if user is None:
             user = User(oauth_token)
             db_session.add(user)
 
         user.github_access_token = oauth_token
-        db_session.commit()
+        await db_session.commit()
         return redirect(next_url)
 
 Store this token somewhere securely. It is needed later to make requests on
@@ -116,7 +118,7 @@ the user. It should return the access token or ``None``:
 .. code-block:: python
 
     @github.access_token_getter
-    def token_getter():
+    async def token_getter():
         user = g.user
         if user is not None:
             return user.github_access_token
@@ -129,8 +131,8 @@ They will return a dictionary representation of the given API endpoint.
 .. code-block:: python
 
     @app.route('/repo')
-    def repo():
-        repo_dict = github.get('repos/luckydonald/github-quart')
+    async def repo():
+        repo_dict = await github.get('repos/luckydonald/github-quart')
         return str(repo_dict)
 
 

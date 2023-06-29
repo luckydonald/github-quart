@@ -6,6 +6,8 @@ GitHub-Quart
 GitHub-Quart is an extension for authenticating Quart applications with GitHub.
 It also provides support for various other requests to the GitHub API.
 
+This work is based on the excellent Flask extension `GitHub-Flask <https://github.com/cenkalti/github-flask/>`_ and is essentially a port of that to Quart.
+
 .. image:: https://travis-ci.com/luckydonald/github-quart.svg?branch=master
     :target: https://travis-ci.com/luckydonald/github-quart
 
