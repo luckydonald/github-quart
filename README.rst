@@ -1,5 +1,7 @@
 GitHub-Quart
 ============
+.. image:: docs/_static/github-quart.png
+    :alt: GitHub-Quart logo
 
 GitHub-Quart is an extension for authenticating Quart applications with GitHub.
 It also provides support for various other requests to the GitHub API.
