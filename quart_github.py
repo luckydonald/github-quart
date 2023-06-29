@@ -9,7 +9,7 @@
 import asyncio
 from weakref import finalize as Finalizer
 import logging
-from typing import Callable, Any, Dict
+from typing import Callable, Any, Dict, Coroutine
 from werkzeug.wrappers import Response as WerkzeugResponse
 
 from urllib.parse import urlencode, parse_qs
@@ -17,6 +17,7 @@ from functools import wraps
 
 from httpx import AsyncClient, Response
 from quart import redirect, request, json, Quart, current_app
+from quart.utils import is_coroutine_function
 
 __version__ = '3.2.0'
 
@@ -83,7 +84,7 @@ class GitHub(object):
     session: AsyncClient
     _session: AsyncClient | None
     _finalizer: Finalizer | None
-    get_access_token: Callable[[], None]
+    get_access_token: Callable[[], Coroutine[None]]
 
     def __init__(self, app=None):
         self._session = None
@@ -122,16 +123,25 @@ class GitHub(object):
             return
         loop.call_soon(session.aclose)
 
-    def access_token_getter(self, f):
+    def access_token_getter(self, f: Callable[[], Any] | Callable[[], Coroutine[None]]):
         """
         Registers a function as the access_token getter. Must return the
         access_token used to make requests to GitHub on the user's behalf.
 
         """
-        self.get_access_token = f
-        return f
+        if is_coroutine_function(f):
+            self.get_access_token = f
+        else:
+            async def async_f(*args, **kwargs):
+                return f(*args, **kwargs)
+            # end def
 
-    def get_access_token(self):
+            self.get_access_token = async_f
+        # end if
+        return f
+    # end def
+
+    async def get_access_token(self):
         raise NotImplementedError
 
     def authorize(self, scope: list[str] = None, redirect_uri: str | None = None, state: str | None = None) -> WerkzeugResponse:
@@ -252,7 +262,7 @@ class GitHub(object):
 
         """
         headers = self._pop_headers(kwargs)
-        headers['Authorization'] = self._get_authorization_header(access_token)
+        headers['Authorization'] = await self._get_authorization_header(access_token)
         url = self._get_resource_url(resource)
         return await self.session.request(method, url, follow_redirects=True, headers=headers, **kwargs)
 
@@ -265,9 +275,9 @@ class GitHub(object):
             return {}
         return headers.copy()
 
-    def _get_authorization_header(self, access_token: str | None) -> str:
+    async def _get_authorization_header(self, access_token: str | None) -> str:
         if access_token is None:
-            access_token = self.get_access_token()
+            access_token = await self.get_access_token()
         return 'token %s' % access_token
 
     def _get_resource_url(self, resource: str) -> str:
