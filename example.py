@@ -134,7 +134,7 @@ def user():
 
 @app.route('/repo')
 def repo():
-    return jsonify(github.get('/repos/cenkalti/github-flask'))
+    return jsonify(github.get('/repos/luckydonald/github-quart'))
 
 
 if __name__ == '__main__':

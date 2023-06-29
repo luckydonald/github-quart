@@ -9,7 +9,7 @@ Links
 
 * `documentation <http://github-quart.readthedocs.org>`_
 * `development version
-  <http://github.com/cenkalti/github-quart/zipball/master#egg=GitHub-Quart-dev>`_
+  <http://github.com/luckydonald/github-quart/zipball/master#egg=GitHub-Quart-dev>`_
 
 """
 import os
