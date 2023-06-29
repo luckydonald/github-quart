@@ -1,15 +1,15 @@
 """
-GitHub-Flask
+GitHub-Quart
 ------------
 
-Adds support to authorize users with GitHub and make API requests with Flask.
+Adds support to authorize users with GitHub and make API requests with Quart.
 
 Links
 `````
 
-* `documentation <http://github-flask.readthedocs.org>`_
+* `documentation <http://github-quart.readthedocs.org>`_
 * `development version
-  <http://github.com/cenkalti/github-flask/zipball/master#egg=GitHub-Flask-dev>`_
+  <http://github.com/cenkalti/github-quart/zipball/master#egg=GitHub-Quart-dev>`_
 
 """
 import os
@@ -24,7 +24,7 @@ def read(*fname):
 
 
 def get_version():
-    for line in read('flask_github.py').splitlines():
+    for line in read('quart_github.py').splitlines():
         m = re.match(r"__version__\s*=\s'(.*)'", line)
         if m:
             return m.groups()[0].strip()
@@ -32,22 +32,22 @@ def get_version():
 
 
 setup(
-    name='GitHub-Flask',
+    name='GitHub-Quart',
     version=get_version(),
-    url='http://github.com/cenkalti/github-flask',
+    url='http://github.com/luckydonald/github-quart',
     license='MIT',
     author='Cenk Alti',
-    author_email='cenkalti@gmail.com',
-    description='GitHub extension for Flask microframework',
+    author_email='github-quart+code@luckydonald.de',
+    description='GitHub extension for Quart microframework',
     long_description=__doc__,
-    py_modules=['flask_github'],
-    test_suite='test_flask_github',
+    py_modules=['quart_github'],
+    test_suite='test_quart_github',
     zip_safe=False,
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'Flask',
-        'requests',
+        'quart',
+        'httpx',
     ],
     tests_require=['mock'],
     classifiers=[
@@ -55,10 +55,8 @@ setup(
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.11',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ]
