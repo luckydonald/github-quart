@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# GitHub-Flask documentation build configuration file, created by
+# GitHub-Quart documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul  9 21:24:46 2013.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -19,7 +19,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('_themes'))
 
-import flask_github
+import quart_github
 
 # -- General configuration -----------------------------------------------------
 
@@ -47,15 +47,15 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'GitHub-Flask'
-copyright = u'2013, Cenk Altı'
+project = 'GitHub-Quart'
+copyright = '2013, Cenk Altı; 2023, luckydonald'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = flask_github.__version__
+version = quart_github.__version__
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -101,14 +101,14 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'flask_small'
+html_theme = 'quart_small'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
     'index_logo': 'github-quart.png',
-    'github_fork': 'cenkalti/github-flask'
+    'github_fork': 'luckydonald/github-quart'
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -116,7 +116,7 @@ html_theme_path = ['_themes']
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = 'GitHub-Flask'
+html_title = 'GitHub-Quart'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -177,7 +177,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'GitHub-Flaskdoc'
+htmlhelp_basename = 'GitHub-Quartdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -196,8 +196,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'GitHub-Flask.tex', u'GitHub-Flask Documentation',
-   u'Cenk Altı', 'manual'),
+  ('index', 'GitHub-Quart.tex', 'GitHub-Quart Documentation',
+   'luckydonald', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -226,8 +226,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'github-flask', u'GitHub-Flask Documentation',
-     [u'Cenk Altı'], 1)
+    ('index', 'github-quart', 'GitHub-Quart Documentation',
+     ['luckydonald'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -240,8 +240,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'GitHub-Flask', u'GitHub-Flask Documentation',
-   u'Cenk Altı', 'GitHub-Flask', 'One line description of project.',
+  ('index', 'GitHub-Quart', 'GitHub-Quart Documentation',
+   'luckydonald', 'GitHub-Quart', 'One line description of project.',
    'Miscellaneous'),
 ]
 

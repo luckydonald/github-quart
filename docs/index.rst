@@ -1,14 +1,14 @@
-GitHub-Flask
+GitHub-Quart
 ============
 
-.. module:: flask_github
+.. module:: quart_github
 
-GitHub-Flask is an extension to `Flask`_ that allows you authenticate your
+GitHub-Quart is an extension to `Quart`_ that allows you authenticate your
 users via GitHub using `OAuth`_ protocol and call `GitHub API`_ methods.
 
-GitHub-Flask depends on the `requests`_ library.
+GitHub-Quart depends on the `requests`_ library.
 
-.. _Flask: http://flask.pocoo.org/
+.. _Quart: http://quart.pocoo.org/
 .. _OAuth: http://oauth.net/
 .. _GitHub API: http://developer.github.com/v3/
 .. _requests: http://python-requests.org/
@@ -21,20 +21,20 @@ Install the extension with the following command:
 
 .. code-block:: bash
 
-    $ pip install GitHub-Flask
+    $ pip install GitHub-Quart
 
 
 Configuration
 -------------
 
-Here’s an example of how GitHub-Flask is typically initialized and configured:
+Here’s an example of how GitHub-Quart is typically initialized and configured:
 
 .. code-block:: python
 
-    from flask import Flask
-    from flask_github import GitHub
+    from quart import Quart
+    from quart_github import GitHub
 
-    app = Flask(__name__)
+    app = Quart(__name__)
     app.config['GITHUB_CLIENT_ID'] = 'XXX'
     app.config['GITHUB_CLIENT_SECRET'] = 'YYY'
 
@@ -44,7 +44,7 @@ Here’s an example of how GitHub-Flask is typically initialized and configured:
 
     github = GitHub(app)
 
-The following configuration settings exist for GitHub-Flask:
+The following configuration settings exist for GitHub-Quart:
 
 =================================== ==========================================
 `GITHUB_CLIENT_ID`                  Your GitHub application's client id. Go to
@@ -67,7 +67,7 @@ Authenticating / Authorizing Users
 ----------------------------------
 
 To authenticate your users with GitHub simply call
-:meth:`~flask_github.GitHub.authorize` at your login handler:
+:meth:`~quart_github.GitHub.authorize` at your login handler:
 
 .. code-block:: python
 
@@ -80,7 +80,7 @@ It will redirect the user to GitHub. If the user accepts the authorization
 request GitHub will redirect the user to your callback URL with the
 OAuth ``code`` parameter. Then the extension will make another request to
 GitHub to obtain access token and call your
-:meth:`~flask_github.GitHub.authorized_handler` function with that token.
+:meth:`~quart_github.GitHub.authorized_handler` function with that token.
 If the authorization fails ``oauth_token`` parameter will be ``None``:
 
 .. code-block:: python
@@ -109,7 +109,7 @@ behalf of the user.
 Invoking Remote Methods
 -----------------------
 
-We need to register a function as a token getter for Github-Flask extension.
+We need to register a function as a token getter for Github-Quart extension.
 It will be called automatically by the extension to get the access token of
 the user. It should return the access token or ``None``:
 
@@ -122,15 +122,15 @@ the user. It should return the access token or ``None``:
             return user.github_access_token
 
 After setting up you can use the
-:meth:`~flask_github.GitHub.get`,  :meth:`~flask_github.GitHub.post`
-or other verb methods of the :class:`~flask_github.GitHub` object.
+:meth:`~quart_github.GitHub.get`,  :meth:`~quart_github.GitHub.post`
+or other verb methods of the :class:`~quart_github.GitHub` object.
 They will return a dictionary representation of the given API endpoint.
 
 .. code-block:: python
 
     @app.route('/repo')
     def repo():
-        repo_dict = github.get('repos/cenkalti/github-flask')
+        repo_dict = github.get('repos/luckydonald/github-quart')
         return str(repo_dict)
 
 
@@ -138,18 +138,18 @@ Full Example
 ------------
 
 A full example can be found in `example.py`_ file.
-Install the required `Flask-SQLAlchemy`_ package first.
+Install the required `Quart-SQLAlchemy`_ package first.
 Then edit the file and change
 ``GITHUB_CLIENT_ID`` and ``GITHUB_CLIENT_SECRET`` settings.
 Then you can run it as a python script:
 
 .. code-block:: bash
 
-    $ pip install Flask-SQLAlchemy
+    $ pip install Quart-SQLAlchemy
     $ python example.py
 
-.. _example.py: https://github.com/cenkalti/github-flask/blob/master/example.py
-.. _Flask-SQLAlchemy: http://pythonhosted.org/Flask-SQLAlchemy/
+.. _example.py: https://github.com/luckydonald/github-quart/blob/master/example.py
+.. _Quart-SQLAlchemy: http://pythonhosted.org/Quart-SQLAlchemy/
 
 API Reference
 -------------
