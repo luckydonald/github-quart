@@ -81,11 +81,13 @@ class GitHub(object):
     base_url: str
     auth_url: str
     session: AsyncClient
-    _session: AsyncClient
-    _finalizer: Finalizer
+    _session: AsyncClient | None
+    _finalizer: Finalizer | None
     get_access_token: Callable[[], None]
 
     def __init__(self, app=None):
+        self._session = None
+        self._finalizer = None
         if app is not None:
             self.app = app
             self.init_app(self.app)
@@ -105,16 +107,19 @@ class GitHub(object):
 
     @session.setter
     def session(self, value: AsyncClient):
-        self._close_session(self._session)
+        loop = asyncio.get_event_loop()
+        self._close_session(self._session, loop)
         # end if
         self._session = value
-        self._finalizer = Finalizer(value, self._close_session, value)
+        self._finalizer = Finalizer(value, self._close_session, value, loop)
 
     @staticmethod
-    def _close_session(session: AsyncClient):
-        if not session:
+    def _close_session(session: AsyncClient, loop: asyncio.AbstractEventLoop):
+        if (
+            not session or session.is_closed or
+            not loop or loop.is_closed()
+        ):
             return
-        loop = asyncio.get_event_loop()
         loop.call_soon(session.aclose)
 
     def access_token_getter(self, f):
