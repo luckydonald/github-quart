@@ -1,22 +1,21 @@
-GitHub-Flask
+GitHub-Quart
 ============
 
-GitHub-Flask is an extension for authenticating Flask applications with GitHub.
+GitHub-Quart is an extension for authenticating Quart applications with GitHub.
 It also provides support for various other requests to the GitHub API.
-Compatible with Python 2.7 and 3.4.
 
-.. image:: https://travis-ci.org/cenkalti/github-flask.svg?branch=master
-    :target: https://travis-ci.org/cenkalti/github-flask
+.. image:: https://travis-ci.com/luckydonald/github-quart.svg?branch=master
+    :target: https://travis-ci.com/luckydonald/github-quart
 
 
 Installation
 ------------
 
-GitHub-Flask is available on PyPI:
+GitHub-Quart is available on PyPI:
 
 .. code-block:: bash
 
-    $ pip install github-flask
+    $ pip install github-quart
 
 
 Usage
@@ -34,6 +33,6 @@ it's working:
 
 Links
 -----
-* `Documentation <https://github-flask.readthedocs.org>`_
-* `PyPI <https://pypi.org/project/GitHub-Flask/>`_
+* `Documentation <https://github-quart.readthedocs.org>`_
+* `PyPI <https://pypi.org/project/GitHub-Quart/>`_
 * `GiHub API Documentation <https://developer.github.com/v3/>`_
